@@ -1,0 +1,40 @@
+# PostgreSQL + Django (Gunicorn) + Nginx con el frontend React compilado.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cotizapro}
+      POSTGRES_USER: ${POSTGRES_USER:-cotizapro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cotizapro}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cotizapro}"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static:/app/staticfiles
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - static:/app/staticfiles:ro
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  static:
